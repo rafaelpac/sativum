@@ -48,7 +48,7 @@
   --warn-bg: #3a3116; --warn-ink: #f0d58a; --err-bg: #3d211b; --err-ink: #f3b3a5; --ok-ink: #8fd096;
 }
 :root { box-sizing: border-box; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
-*, *::before, *::after { box-sizing: inherit; }
+*, *::before, *::after { box-sizing: border-box; }
 html { scroll-padding-top: env(safe-area-inset-top, 0px); }
 body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 var(--font); font-variant-numeric: tabular-nums; }
 a { color: var(--leaf); }
