@@ -773,12 +773,12 @@ function renderResults(payload, needs, toCover, proposals, recErr) {
 
   $("#results").innerHTML = `
     <h3>Necesidades por cultivo</h3>
-    <p class="summary">${esc(strat)} · suelo ${esc(SOIL_LABEL[payload.soil.soil_type])} · P Olsen ${fmt(s.p_conc)} · K ${fmt(s.k_conc, 0)} mg/kg · MO ${fmt(s.som)} %</p>
     <div class="tbl-wrap"><table class="needs">
       <thead><tr><th>Cultivo</th><th>N</th><th>P₂O₅</th><th>K₂O</th></tr></thead>
       <tbody>${rows}</tbody>
     </table></div>
-    <p class="muted">kg/ha. Fertilicalc da P y K elementales; se muestran también como óxidos.</p>
+    <p class="muted">kg/ha de nutriente. Fertilicalc da P y K elementales; se muestran también como óxidos.</p>
+    <p class="summary">Calculado con la estrategia “${esc(strat)}” para un suelo ${esc(SOIL_LABEL[payload.soil.soil_type].toLowerCase())} con P Olsen ${fmt(s.p_conc)} mg/kg, K ${fmt(s.k_conc, 0)} mg/kg y ${fmt(s.som)} % de materia orgánica.</p>
 
     <h3>A cubrir con fertilizantes</h3>
     <div class="tocover">
