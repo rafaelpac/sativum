@@ -1,0 +1,871 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Plan de abonado · Sativum</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌾</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+:root {
+  color-scheme: light;
+  --bg: #f2f4ef;
+  --surface: #ffffff;
+  --surface-2: #e8ece3;
+  --ink: #1d2820;
+  --ink-2: #4f5c52;
+  --line: #cfd6c9;
+  --soil: #6b4a2f;
+  --leaf: #3d6b3a;
+  --leaf-ink: #ffffff;
+  --n: #3e7a4b;
+  --p: #6e5aa8;
+  --k: #b8891f;
+  --warn-bg: #fbf1d6;
+  --warn-ink: #6a4e09;
+  --err-bg: #f8e1dc;
+  --err-ink: #7a2516;
+  --ok-ink: #2f6a33;
+  --radius: 6px;
+  --font: "Public Sans", "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #141915; --surface: #1d241f; --surface-2: #262f28; --ink: #e5ebe2; --ink-2: #a4b0a6;
+    --line: #36423a; --soil: #c9a27e; --leaf: #7fb27a; --leaf-ink: #102012;
+    --n: #79bf88; --p: #a996e0; --k: #e0b64c;
+    --warn-bg: #3a3116; --warn-ink: #f0d58a; --err-bg: #3d211b; --err-ink: #f3b3a5; --ok-ink: #8fd096;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #141915; --surface: #1d241f; --surface-2: #262f28; --ink: #e5ebe2; --ink-2: #a4b0a6;
+  --line: #36423a; --soil: #c9a27e; --leaf: #7fb27a; --leaf-ink: #102012;
+  --n: #79bf88; --p: #a996e0; --k: #e0b64c;
+  --warn-bg: #3a3116; --warn-ink: #f0d58a; --err-bg: #3d211b; --err-ink: #f3b3a5; --ok-ink: #8fd096;
+}
+:root { box-sizing: border-box; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+*, *::before, *::after { box-sizing: inherit; }
+html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 var(--font); font-variant-numeric: tabular-nums; }
+a { color: var(--leaf); }
+:focus-visible { outline: 2px solid var(--leaf); outline-offset: 2px; }
+
+header.top {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: .5rem 1.5rem;
+  padding: 1.25rem clamp(1rem, 4vw, 2.5rem) 0; max-width: 1280px; margin: 0 auto;
+}
+header.top h1 { margin: 0; font-size: 1.6rem; font-weight: 700; letter-spacing: -.01em; }
+header.top p { margin: 0; color: var(--ink-2); font-size: .9rem; }
+nav.tabs { display: flex; gap: .25rem; max-width: 1280px; margin: 1rem auto 0; padding: 0 clamp(1rem, 4vw, 2.5rem); border-bottom: 1px solid var(--line); overflow-x: auto; }
+nav.tabs button {
+  font: inherit; font-weight: 600; background: none; border: 0; color: var(--ink-2); padding: .6rem .9rem;
+  border-bottom: 3px solid transparent; cursor: pointer; white-space: nowrap;
+}
+nav.tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--soil); }
+
+main { max-width: 1280px; margin: 0 auto; padding: 1.25rem clamp(1rem, 4vw, 2.5rem) 3rem; }
+.panel[hidden] { display: none; }
+
+.plan { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); gap: 2rem; align-items: start; }
+@media (max-width: 960px) { .plan { grid-template-columns: 1fr; } }
+
+section.step { border-left: 3px solid var(--line); padding: 0 0 1.5rem 1.1rem; position: relative; }
+section.step:last-child { padding-bottom: 0; }
+section.step h2 { font-size: 1.05rem; margin: 0 0 .75rem; display: flex; align-items: center; gap: .6rem; }
+section.step h2 .num {
+  position: absolute; left: -.85rem; width: 1.5rem; height: 1.5rem; border-radius: 50%;
+  background: var(--soil); color: var(--bg); font-size: .8rem; display: grid; place-items: center;
+}
+section.step.done { border-left-color: var(--leaf); }
+section.step.done h2 .num { background: var(--leaf); color: var(--leaf-ink); }
+
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: .75rem 1rem; align-items: end; }
+.grid.wide { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+label.f { display: block; font-size: .85rem; font-weight: 600; color: var(--ink-2); }
+label.f small { font-weight: 400; margin-left: .2em; }
+label.f > input, label.f > select { display: block; margin-top: .25rem; }
+input, select, textarea {
+  font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: .45rem .6rem; min-width: 0; width: 100%;
+}
+input[type="checkbox"], input[type="radio"] { width: auto; accent-color: var(--leaf); }
+label.check { display: flex; align-items: center; gap: .5rem; font-size: .9rem; cursor: pointer; }
+.row { display: flex; flex-wrap: wrap; gap: .6rem; align-items: center; }
+button.btn {
+  font: inherit; font-weight: 600; border-radius: var(--radius); padding: .5rem 1rem; cursor: pointer;
+  border: 1px solid var(--line); background: var(--surface); color: var(--ink);
+}
+button.btn.primary { background: var(--leaf); border-color: var(--leaf); color: var(--leaf-ink); }
+button.btn.big { padding: .75rem 1.4rem; font-size: 1rem; }
+button.btn:disabled { opacity: .55; cursor: progress; }
+button.link { font: inherit; background: none; border: 0; padding: 0; color: var(--leaf); cursor: pointer; text-decoration: underline; }
+.muted { color: var(--ink-2); font-size: .85rem; }
+.status { font-size: .88rem; margin-top: .5rem; }
+.status.ok { color: var(--ok-ink); }
+.status.err { color: var(--err-ink); }
+.note { background: var(--warn-bg); color: var(--warn-ink); padding: .6rem .8rem; border-radius: var(--radius); font-size: .88rem; }
+.error { background: var(--err-bg); color: var(--err-ink); padding: .7rem .9rem; border-radius: var(--radius); font-size: .9rem; white-space: pre-wrap; }
+details { margin-top: .75rem; }
+details summary { cursor: pointer; font-weight: 600; font-size: .9rem; }
+details .grid { margin-top: .75rem; }
+
+#map { height: 260px; border-radius: var(--radius); border: 1px solid var(--line); margin: .75rem 0; background: var(--surface-2); }
+.soil-src { font-size: .8rem; color: var(--ink-2); margin-top: .5rem; }
+
+.rot-item { display: grid; grid-template-columns: minmax(0, 2fr) minmax(90px, 1fr) auto auto; gap: .5rem; align-items: end; margin-bottom: .5rem; }
+@media (max-width: 560px) { .rot-item { grid-template-columns: 1fr 1fr; } }
+
+/* Resultados */
+.results { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 1rem); }
+@media (max-width: 960px) { .results { position: static; } }
+.results .empty { border: 2px dashed var(--line); border-radius: var(--radius); padding: 2rem 1.5rem; color: var(--ink-2); }
+.results h3 { font-size: 1rem; margin: 1.5rem 0 .6rem; }
+.results h3:first-child { margin-top: 0; }
+.summary { font-size: .9rem; color: var(--ink-2); }
+
+.needs { width: 100%; border-collapse: collapse; font-size: .9rem; }
+.needs th, .needs td { text-align: right; padding: .4rem .5rem; border-bottom: 1px solid var(--line); }
+.needs th:first-child, .needs td:first-child { text-align: left; }
+.needs thead th { font-size: .8rem; color: var(--ink-2); font-weight: 600; }
+.needs td .el { display: block; color: var(--ink-2); font-size: .75rem; }
+.needs tr.current td { font-weight: 700; }
+.tbl-wrap { overflow-x: auto; }
+
+.tocover { display: flex; gap: 1.5rem; flex-wrap: wrap; margin: .25rem 0 .5rem; }
+.tocover div { display: flex; flex-direction: column; }
+.tocover b { font-size: 1.9rem; line-height: 1.1; }
+.tocover span { font-size: .8rem; color: var(--ink-2); }
+.tocover .cn b { color: var(--n); } .tocover .cp b { color: var(--p); } .tocover .ck b { color: var(--k); }
+
+.proposal { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: .9rem 1rem; margin-bottom: .75rem; }
+.proposal.best { border-color: var(--leaf); border-width: 2px; }
+.proposal header { display: flex; justify-content: space-between; gap: 1rem; align-items: baseline; flex-wrap: wrap; }
+.proposal ul { list-style: none; margin: .4rem 0 .7rem; padding: 0; }
+.proposal li { display: flex; gap: .75rem; }
+.proposal li .q { font-weight: 700; min-width: 7.5rem; }
+.bars { display: grid; grid-template-columns: 3.5rem 1fr 5.5rem; gap: .3rem .6rem; align-items: center; font-size: .8rem; }
+.bar { position: relative; height: .65rem; background: var(--surface-2); border-radius: 3px; overflow: hidden; }
+.bar i { position: absolute; inset: 0 auto 0 0; border-radius: 3px; }
+.bar .mark { position: absolute; top: -2px; bottom: -2px; width: 2px; background: var(--ink); left: 50%; }
+.bars .v { text-align: right; color: var(--ink-2); }
+.bars .v.over { color: var(--warn-ink); font-weight: 600; }
+.bars .v.under { color: var(--err-ink); font-weight: 600; }
+
+table.list { width: 100%; border-collapse: collapse; font-size: .88rem; }
+table.list th, table.list td { padding: .4rem .5rem; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+table.list th.r, table.list td.r { text-align: right; }
+table.list thead th { color: var(--ink-2); font-size: .8rem; position: sticky; top: 0; background: var(--bg); }
+
+.pest { padding: .9rem 0; border-bottom: 1px solid var(--line); }
+.pest h4 { margin: 0 0 .2rem; font-size: 1rem; }
+.weeks { display: grid; grid-template-columns: repeat(52, 1fr); gap: 1px; margin: .5rem 0 .2rem; max-width: 720px; }
+.weeks i { height: 14px; background: var(--surface-2); }
+.weeks-axis { display: grid; grid-template-columns: repeat(12, 1fr); max-width: 720px; font-size: .7rem; color: var(--ink-2); }
+
+pre.json { background: var(--surface-2); padding: .75rem; border-radius: var(--radius); overflow: auto; max-height: 320px; font-size: .78rem; }
+.spinner { display: inline-block; width: 1em; height: 1em; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: spin .8s linear infinite; vertical-align: -2px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 3s; } }
+</style>
+</head>
+<body>
+<header class="top">
+  <h1>Plan de abonado</h1>
+  <p>Necesidades de N, P y K y propuestas de fertilizantes con la API Sativum del ITACyL (modelo Fertilicalc).</p>
+</header>
+
+<nav class="tabs" role="tablist">
+  <button role="tab" aria-selected="true" data-tab="plan">Plan de abonado</button>
+  <button role="tab" aria-selected="false" data-tab="ferts">Fertilizantes</button>
+  <button role="tab" aria-selected="false" data-tab="pests">Plagas</button>
+  <button role="tab" aria-selected="false" data-tab="config">Claves y conexión</button>
+</nav>
+
+<main>
+<!-- ============================================================ PLAN -->
+<div class="panel" id="tab-plan">
+  <div class="plan">
+    <form id="planForm" autocomplete="off" onsubmit="return false">
+      <section class="step" id="stepKey">
+        <h2><span class="num">1</span>Claves de la API</h2>
+        <div id="keySummary" class="muted"></div>
+      </section>
+
+      <section class="step" id="stepSoil">
+        <h2><span class="num">2</span>Parcela y suelo</h2>
+        <p class="muted" style="margin-top:0">Pulsa en el mapa o escribe las coordenadas para traer los datos de suelo del ITACyL. Si tienes analítica propia, sustituye los valores.</p>
+        <div class="grid">
+          <label class="f">Latitud<input id="lat" type="number" step="any" placeholder="41.6529"></label>
+          <label class="f">Longitud<input id="lon" type="number" step="any" placeholder="-5.6670"></label>
+        </div>
+        <div id="map" role="application" aria-label="Mapa para elegir la parcela"></div>
+        <div class="row">
+          <button type="button" class="btn" id="btnSoil">Consultar suelo en este punto</button>
+          <span id="soilStatus" class="status"></span>
+        </div>
+        <div class="grid" style="margin-top:1rem">
+          <label class="f">Textura
+            <select id="soilType">
+              <option value="SANDY">Arenoso</option>
+              <option value="SANDY_LOAM">Franco arenoso</option>
+              <option value="LOAM" selected>Franco</option>
+              <option value="SILTY_LOAM">Franco limoso</option>
+              <option value="CLAY_LOAM">Franco arcilloso</option>
+              <option value="CLAY">Arcilloso</option>
+            </select>
+          </label>
+          <label class="f">P Olsen <small>mg/kg</small><input id="pConc" type="number" step="any" min="0"></label>
+          <label class="f">K (acet. amónico) <small>mg/kg</small><input id="kConc" type="number" step="any" min="0"></label>
+          <label class="f">Materia orgánica <small>%</small><input id="som" type="number" step="any" min="0" placeholder="2"></label>
+          <label class="f">pH<input id="ph" type="number" step="any" min="0" max="14"></label>
+          <label class="f">CEC <small>meq/kg</small><input id="cec" type="number" step="any" min="0"></label>
+        </div>
+        <div id="soilExtra" class="soil-src"></div>
+      </section>
+
+      <section class="step" id="stepCrop">
+        <h2><span class="num">3</span>Cultivo y rotación</h2>
+        <div id="cropsStatus" class="muted"></div>
+        <div class="grid wide">
+          <label class="f">Buscar cultivo<input id="cropFilter" type="search" placeholder="maíz, trigo, alfalfa…"></label>
+          <label class="f">Cultivo a abonar<select id="cropSel"><option value="">Carga los cultivos con tu clave</option></select></label>
+        </div>
+        <div class="grid" style="margin-top:.75rem">
+          <label class="f">Rendimiento <small>kg/ha</small><input id="cropYield" type="number" step="100" min="0"></label>
+          <label class="f">Residuo en campo <small>% (vacío = automático)</small><input id="fRes" type="number" step="1" min="0" max="100"></label>
+        </div>
+        <div id="cropInfo" class="muted" style="margin-top:.5rem"></div>
+        <label class="check" style="margin-top:.6rem"><input type="checkbox" id="collect"> Se retira el residuo (paja empacada, cañote…)</label>
+
+        <details id="rotDetails">
+          <summary>Cultivos anteriores de la rotación</summary>
+          <p class="muted">Los residuos del cultivo anterior influyen en el balance de N. Añádelos por orden, del más antiguo al más reciente.</p>
+          <div id="rotList"></div>
+          <button type="button" class="btn" id="btnAddPrev">Añadir cultivo anterior</button>
+        </details>
+      </section>
+
+      <section class="step" id="stepStrat">
+        <h2><span class="num">4</span>Estrategia</h2>
+        <div class="grid wide">
+          <label class="f">Estrategia para P y K
+            <select id="strategy">
+              <option value="SUFFICIENCY">Suficiencia (mínimo fertilizante)</option>
+              <option value="REDUCED">Acumulación y mantenimiento (abono reducido)</option>
+              <option value="MAXIMUM">Acumulación y mantenimiento (máximo rendimiento)</option>
+              <option value="MAINTENANCE">Mantenimiento (sin análisis de suelo)</option>
+            </select>
+          </label>
+          <label class="f">Ajustar las propuestas a
+            <select id="adjust">
+              <option value="N">Nitrógeno (cubre el N exacto)</option>
+              <option value="P">Fósforo</option>
+              <option value="K">Potasio</option>
+            </select>
+          </label>
+        </div>
+        <label class="check" style="margin-top:.6rem"><input type="checkbox" id="tillage"> Laboreo</label>
+        <details>
+          <summary>Parámetros avanzados de nitrógeno</summary>
+          <div class="grid">
+            <label class="f">N de otras fuentes <small>kg/ha (riego, deposición)</small><input id="nOther" type="number" step="any" value="10"></label>
+            <label class="f">N inorgánico final <small>kg/ha</small><input id="nEnd" type="number" step="any" value="10"></label>
+            <label class="f">Fracción de N perdida <small>0–1</small><input id="nLost" type="number" step="0.05" min="0" max="1" value="0"></label>
+            <label class="f">Eficiencia <small>0–1</small><input id="efic" type="number" step="0.05" min="0" max="1" value="0.8"></label>
+          </div>
+        </details>
+        <div class="row" style="margin-top:1.25rem">
+          <button type="button" class="btn primary big" id="btnPlan">Calcular plan de abonado</button>
+        </div>
+      </section>
+    </form>
+
+    <aside class="results" id="results" aria-live="polite">
+      <div class="empty">
+        <strong>Aquí verás el resultado.</strong><br>
+        Elige la parcela, el cultivo y la estrategia y pulsa “Calcular plan de abonado”.
+      </div>
+    </aside>
+  </div>
+</div>
+
+<!-- ======================================================= FERTILIZANTES -->
+<div class="panel" id="tab-ferts" hidden>
+  <div class="grid wide">
+    <label class="f">Nombre<input id="fName" type="search" placeholder="15-15-15, urea…"></label>
+    <label class="f">Fabricante<input id="fProd" type="search"></label>
+  </div>
+  <div class="row" style="margin:.75rem 0">
+    <span class="muted">Tipo:</span>
+    <label class="check"><input type="checkbox" class="ftype" value="NPK"> NPK</label>
+    <label class="check"><input type="checkbox" class="ftype" value="NP"> NP</label>
+    <label class="check"><input type="checkbox" class="ftype" value="NK"> NK</label>
+    <label class="check"><input type="checkbox" class="ftype" value="PK"> PK</label>
+    <label class="check"><input type="checkbox" class="ftype" value="N"> N</label>
+    <label class="check"><input type="checkbox" class="ftype" value="P"> P</label>
+    <label class="check"><input type="checkbox" class="ftype" value="K"> K</label>
+    <label class="check"><input type="checkbox" id="fOrg"> Orgánicos</label>
+    <label class="check"><input type="checkbox" id="fMin"> Minerales</label>
+    <button type="button" class="btn primary" id="btnFerts">Buscar fertilizantes</button>
+  </div>
+  <div id="fertsOut"></div>
+</div>
+
+<!-- ============================================================ PLAGAS -->
+<div class="panel" id="tab-pests" hidden>
+  <div class="row">
+    <label class="check"><input type="radio" name="pmode" value="crop" checked> Cultivo seleccionado en el plan</label>
+    <label class="check"><input type="radio" name="pmode" value="group"> Grupo:</label>
+    <select id="pGroup" style="width:auto"><option value="CEREALES">Cereales</option><option value="LEGUMINOSAS">Leguminosas</option></select>
+    <button type="button" class="btn primary" id="btnPests">Ver calendario de plagas</button>
+  </div>
+  <div id="pestsOut" style="margin-top:1rem"></div>
+</div>
+
+<!-- ============================================================ CONFIG -->
+<div class="panel" id="tab-config" hidden>
+  <div style="max-width:640px">
+    <p>Las claves son gratuitas. Créalas en el <a href="https://portal.api.itacyl.es/portal/apis/" target="_blank" rel="noopener">portal del desarrollador del ITACyL</a>: una para el API <em>Sativum</em> (nutrientes, fertilizantes, plagas) y otra para <em>Información de suelos</em>. Se parecen mucho porque empiezan y terminan igual, pero son distintas.</p>
+    <div class="grid wide">
+      <label class="f">Clave API Sativum<input id="keyMain" type="password" spellcheck="false"></label>
+      <label class="f">Clave API Información de suelos<input id="keySoil" type="password" spellcheck="false" placeholder="si se deja vacía, se usa la anterior"></label>
+    </div>
+    <label class="check" style="margin-top:.6rem"><input type="checkbox" id="showKeys"> Mostrar claves</label>
+    <label class="check"><input type="checkbox" id="rememberKeys"> Recordar las claves en este navegador</label>
+    <details>
+      <summary>Conexión</summary>
+      <div class="grid wide">
+        <label class="f">Gateway<input id="gateway" type="url" spellcheck="false"></label>
+      </div>
+      <p class="muted">Normalmente no hace falta cambiarlo.</p>
+    </details>
+    <div class="row" style="margin-top:1rem">
+      <button type="button" class="btn primary" id="btnSaveKeys">Guardar y comprobar claves</button>
+    </div>
+    <div id="keyStatus" class="status"></div>
+  </div>
+</div>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+"use strict";
+/* ------------------------------------------------------------------ datos de la guía ITACyL */
+const TEXTURA_ARCGIS = { 101: "SANDY", 102: "SANDY_LOAM", 103: "LOAM", 104: "SILTY_LOAM", 105: "CLAY_LOAM", 106: "CLAY" };
+const SOIL_LABEL = { SANDY: "Arenoso", SANDY_LOAM: "Franco arenoso", LOAM: "Franco", SILTY_LOAM: "Franco limoso", CLAY_LOAM: "Franco arcilloso", CLAY: "Arcilloso" };
+const CEC = { SANDY: 30, SANDY_LOAM: 75, LOAM: 100, SILTY_LOAM: 80, CLAY_LOAM: 220, CLAY: 300 };
+const SOIL_EFFECT = { SANDY: 1.68, SANDY_LOAM: 1.56, LOAM: 1.43, SILTY_LOAM: 1.41, CLAY_LOAM: 1.31, CLAY: 1.21 };
+const T_SUF = { SANDY: [8, 100, 1.1], SANDY_LOAM: [10, 150, 1.1], LOAM: [10, 150, 1.5], SILTY_LOAM: [10, 150, 1.5], CLAY_LOAM: [10, 150, 2], CLAY: [12, 200, 2.5] };
+const T_MAX = { SANDY: [10, 100, 1.2], SANDY_LOAM: [12, 175, 1.2], LOAM: [12, 175, 1.7], SILTY_LOAM: [12, 175, 1.7], CLAY_LOAM: [12, 175, 2], CLAY: [20, 300, 5] };
+const BY_STRATEGY = { SUFFICIENCY: T_SUF, REDUCED: T_SUF, MAXIMUM: T_MAX, MAINTENANCE: T_MAX };
+const P_TO_P2O5 = 2.2914, K_TO_K2O = 1.2046;
+
+function defaultsFor(strategy, soil) {
+  const [p, k, eff] = BY_STRATEGY[strategy][soil];
+  return { cec: CEC[soil], soilEffect: SOIL_EFFECT[soil], pThreshold: p, kThreshold: k, efficiency: eff };
+}
+
+/* ------------------------------------------------------------------ utilidades */
+const $ = (s, el = document) => el.querySelector(s);
+const $$ = (s, el = document) => [...el.querySelectorAll(s)];
+const num = (id) => { const v = $(id).value.trim(); return v === "" ? null : Number(v); };
+const fmt = (v, d = 1) => (v == null || isNaN(v)) ? "–" : Number(v).toLocaleString("es-ES", { minimumFractionDigits: d, maximumFractionDigits: d });
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const store = {
+  get(k) { try { return localStorage.getItem("sativum:" + k); } catch { return null; } },
+  set(k, v) { try { v == null ? localStorage.removeItem("sativum:" + k) : localStorage.setItem("sativum:" + k, v); } catch {} },
+};
+
+/* ------------------------------------------------------------------ configuración y API */
+const cfg = { keyMain: "", keySoil: "", gateway: "https://gateway.api.itacyl.es" };
+
+class ApiError extends Error {
+  constructor(msg, status, body) { super(msg); this.status = status; this.body = body; }
+}
+
+function explain(err) {
+  if (err instanceof ApiError) {
+    const b = err.body;
+    const txt = typeof b === "object" && b ? (b.error || b.message || JSON.stringify(b)) : (b || "");
+    if (/disallowed/i.test(txt)) return `La clave no tiene acceso a este API (${txt}). Comprueba que usas la clave del API correcto en “Claves y conexión”.`;
+    if (err.status === 401 || err.status === 403) return `Clave no válida o sin permisos (HTTP ${err.status}). ${txt}`;
+    if (err.status === 404) return `Ruta no encontrada (HTTP 404). Revisa la dirección del gateway. ${txt}`;
+    return `Error HTTP ${err.status ?? ""}: ${txt}`;
+  }
+  if (err instanceof TypeError && /fetch|network|load failed/i.test(err.message)) return "El navegador no pudo conectar con el gateway del ITACyL. Comprueba tu conexión a internet y la dirección del gateway en “Claves y conexión”.";
+  return err.message || String(err);
+}
+
+async function api(path, { method = "GET", params, body, key } = {}) {
+  const url = new URL(cfg.gateway.replace(/\/$/, "") + path, location.href);
+  if (params) for (const [k, v] of params) if (v !== null && v !== undefined && v !== "") url.searchParams.append(k, v);
+  const headers = { apikey: key || cfg.keyMain, Accept: "application/json" };
+  if (body) headers["Content-Type"] = "application/json";
+  const resp = await fetch(url, { method, headers, body: body ? JSON.stringify(body) : undefined });
+  const text = await resp.text();
+  let data = null;
+  try { data = text ? JSON.parse(text) : null; } catch { data = text; }
+  if (!resp.ok) throw new ApiError(`HTTP ${resp.status}`, resp.status, data);
+  if (data && typeof data === "object" && !Array.isArray(data) && data.error && Object.keys(data).length <= 2)
+    throw new ApiError(data.error, resp.status, data);
+  return data;
+}
+
+const Sativum = {
+  async crops() {
+    const data = await api("/sativum/nutrients/crops", { params: [["lang", "es"]] }) || [];
+    return data.map((c) => (c && c.items && typeof c.items === "object" ? c.items : c));
+  },
+  algo: (payload) => api("/sativum/fertilicalc/algo/", { method: "POST", body: payload }),
+  recommend: (payload) => api("/sativum/nutrients/fertilizers/recommendation", { method: "POST", body: payload }),
+  fertilizers: (params) => api("/sativum/nutrients/fertilizers", { params }),
+  pests: (params) => api("/sativum/pests", { params }),
+  async soil(lon, lat) {
+    const d = 0.0005;
+    const params = [
+      ["geometry", JSON.stringify({ x: lon, y: lat })], ["geometryType", "esriGeometryPoint"], ["sr", "4326"],
+      ["layers", "all"], ["tolerance", "10"], ["mapExtent", [lon - d, lat - d, lon + d, lat + d].join(",")],
+      ["imageDisplay", "600,550,96"], ["returnGeometry", "false"], ["f", "json"],
+    ];
+    const data = await api("/sativumarcgis/MapServer/identify", { params, key: cfg.keySoil || cfg.keyMain });
+    if (data && data.error) throw new ApiError(data.error.message || "Error ArcGIS", data.error.code, data);
+    const L = {};
+    for (const r of (data && data.results) || []) L[r.layerId] = r.attributes || {};
+    const pv = (i) => { const v = parseFloat(L[i] && L[i]["Pixel Value"]); return isNaN(v) ? null : v; };
+    const tex = pv(1);
+    return {
+      soilType: tex != null ? TEXTURA_ARCGIS[Math.round(tex)] || null : null,
+      textureDesc: L[1] && L[1].Description, texturalClass: L[2] && L[2].Description,
+      som: pv(0), fieldCapacity: pv(3), waterRetention: pv(4), ph: pv(5), p: pv(6), k: pv(7),
+      kWater: pv(8), no3Water: pv(9),
+    };
+  },
+};
+
+/* ------------------------------------------------------------------ pestañas */
+$$("nav.tabs button").forEach((b) => b.addEventListener("click", () => showTab(b.dataset.tab)));
+function showTab(name) {
+  $$("nav.tabs button").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.tab === name)));
+  $$(".panel").forEach((p) => (p.hidden = p.id !== "tab-" + name));
+  if (name === "plan" && map) setTimeout(() => map.invalidateSize(), 50);
+}
+
+/* ------------------------------------------------------------------ claves */
+function loadConfig() {
+  cfg.keyMain = store.get("keyMain") || "";
+  cfg.keySoil = store.get("keySoil") || "";
+  const gw = store.get("gateway");
+  if (gw && !/\/gw\/?$/.test(gw)) cfg.gateway = gw;   // ignora la dirección del antiguo proxy local
+  $("#keyMain").value = cfg.keyMain;
+  $("#keySoil").value = cfg.keySoil;
+  $("#gateway").value = cfg.gateway;
+  $("#rememberKeys").checked = !!cfg.keyMain;
+}
+$("#showKeys").addEventListener("change", (e) => { $("#keyMain").type = $("#keySoil").type = e.target.checked ? "text" : "password"; });
+
+function renderKeySummary() {
+  const s = $("#keySummary");
+  if (!cfg.keyMain) {
+    s.innerHTML = `Aún no has puesto tu clave. <button type="button" class="link" id="goKeys">Añadir claves</button>`;
+    $("#stepKey").classList.remove("done");
+  } else {
+    const mask = (k) => k ? k.slice(0, 4) + "…" + k.slice(-4) : "la misma";
+    s.innerHTML = `Sativum: <strong>${esc(mask(cfg.keyMain))}</strong> · Suelos: <strong>${esc(mask(cfg.keySoil))}</strong>.
+      <button type="button" class="link" id="goKeys">Cambiar</button>`;
+    $("#stepKey").classList.add("done");
+  }
+  $("#goKeys").addEventListener("click", () => showTab("config"));
+}
+
+$("#btnSaveKeys").addEventListener("click", async () => {
+  cfg.keyMain = $("#keyMain").value.trim();
+  cfg.keySoil = $("#keySoil").value.trim();
+  cfg.gateway = $("#gateway").value.trim() || cfg.gateway;
+  const remember = $("#rememberKeys").checked;
+  store.set("keyMain", remember ? cfg.keyMain : null);
+  store.set("keySoil", remember ? cfg.keySoil : null);
+  store.set("gateway", cfg.gateway);
+  renderKeySummary();
+  const st = $("#keyStatus");
+  if (!cfg.keyMain) { st.className = "status err"; st.textContent = "Escribe al menos la clave del API Sativum."; return; }
+  st.className = "status"; st.innerHTML = `<span class="spinner"></span> Comprobando la clave de Sativum…`;
+  try {
+    const n = await loadCrops();
+    st.className = "status ok";
+    st.textContent = `Clave de Sativum correcta: ${n} cultivos cargados.`;
+  } catch (e) {
+    st.className = "status err"; st.textContent = explain(e);
+  }
+});
+
+/* ------------------------------------------------------------------ cultivos */
+let CROPS = [];
+const GROUP_LABEL = {
+  CEREALS: "Cereales", FORAGE_LEGUME: "Forrajeras leguminosas", FORAGE_NON_LEGUME: "Forrajeras no leguminosas",
+  FORAGE_MIX_LEGUME_GRASS: "Praderas mixtas", PULSES: "Leguminosas grano", LEGUMES: "Leguminosas",
+  INDUSTRIAL: "Industriales", HORTICULTURAL: "Hortícolas", TUBERS_ROOTS: "Tubérculos y raíces", TUBERS_ROOT: "Tubérculos y raíces",
+  TREES: "Leñosos", FUNGI: "Hongos", MIXED: "Mixtos", OTHER: "Otros", NONE: "Sin cultivo / barbecho",
+};
+const groupOf = (c) => String(c.plantSpeciesGroup || "NONE").toUpperCase();
+
+async function loadCrops() {
+  $("#cropsStatus").innerHTML = `<span class="spinner"></span> Cargando cultivos…`;
+  try {
+    CROPS = (await Sativum.crops()).filter((c) => c && c.id != null);
+    CROPS.sort((a, b) => String(a.name).localeCompare(String(b.name), "es"));
+    $("#cropsStatus").textContent = "";
+    fillCropSelect($("#cropSel"), $("#cropFilter").value);
+    $$(".prevSel").forEach((s) => fillCropSelect(s, ""));
+    return CROPS.length;
+  } catch (e) {
+    $("#cropsStatus").innerHTML = `<span class="status err">${esc(explain(e))}</span>`;
+    throw e;
+  }
+}
+
+function fillCropSelect(sel, filter) {
+  const keep = sel.value;
+  const f = (filter || "").toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu, "");
+  const groups = {};
+  for (const c of CROPS) {
+    const name = String(c.name || "").toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu, "");
+    if (f && !name.includes(f)) continue;
+    (groups[groupOf(c)] ||= []).push(c);
+  }
+  sel.innerHTML = `<option value="">${CROPS.length ? "Elige un cultivo" : "Carga los cultivos con tu clave"}</option>` +
+    Object.keys(groups).sort((a, b) => (GROUP_LABEL[a] || a).localeCompare(GROUP_LABEL[b] || b, "es")).map((g) =>
+      `<optgroup label="${esc(GROUP_LABEL[g] || g)}">` +
+      groups[g].map((c) => `<option value="${c.id}">${esc(c.name)}</option>`).join("") + `</optgroup>`).join("");
+  if (keep && [...sel.options].some((o) => o.value === keep)) sel.value = keep;
+}
+const cropById = (id) => CROPS.find((c) => String(c.id) === String(id));
+
+$("#cropFilter").addEventListener("input", (e) => fillCropSelect($("#cropSel"), e.target.value));
+$("#cropSel").addEventListener("change", () => {
+  const c = cropById($("#cropSel").value);
+  if (!c) { $("#cropInfo").textContent = ""; return; }
+  $("#cropYield").value = c.yieldMedium || "";
+  $("#cropInfo").innerHTML =
+    `Rendimiento típico: ${fmt(c.yieldLow, 0)} / ${fmt(c.yieldMedium, 0)} / ${fmt(c.yieldHigh, 0)} kg/ha (bajo / medio / alto). ` +
+    `Producto: ${esc(c.harvestProduct)}, ${fmt(c.dryMatter)} % materia seca; N ${fmt(c.n, 2)} %, P ${fmt(c.p, 2)} %, K ${fmt(c.k, 2)} % s.m.s. ` +
+    `Índice de cosecha ${fmt(c.hi, 0)} %; residuo que queda si se retira: ${fmt(c.fres, 0)} %.`;
+  $("#stepCrop").classList.add("done");
+});
+
+$("#btnAddPrev").addEventListener("click", () => addPrevRow());
+function addPrevRow() {
+  const div = document.createElement("div");
+  div.className = "rot-item";
+  div.innerHTML = `
+    <label class="f">Cultivo anterior<select class="prevSel"></select></label>
+    <label class="f">Rendimiento <small>kg/ha</small><input class="prevYield" type="number" step="100" min="0"></label>
+    <label class="check"><input type="checkbox" class="prevCollect"> Se retiró el residuo</label>
+    <button type="button" class="btn" aria-label="Quitar cultivo anterior">Quitar</button>`;
+  fillCropSelect($(".prevSel", div), "");
+  $(".prevSel", div).addEventListener("change", (e) => { const c = cropById(e.target.value); $(".prevYield", div).value = c ? (c.yieldMedium || 0) : ""; });
+  $("button", div).addEventListener("click", () => div.remove());
+  $("#rotList").appendChild(div);
+}
+
+/* ------------------------------------------------------------------ mapa y suelo */
+let map = null, marker = null;
+function initMap() {
+  if (typeof L === "undefined") { $("#map").outerHTML = `<p class="muted">No se pudo cargar el mapa; escribe las coordenadas a mano.</p>`; return; }
+  map = L.map("map").setView([41.65, -4.72], 7);
+  const ign = (svc, layer, fmt) => L.tileLayer(
+    `https://www.ign.es/wmts/${svc}?service=WMTS&request=GetTile&version=1.0.0&format=${fmt}` +
+    `&layer=${layer}&tilematrixset=GoogleMapsCompatible&style=default&tilematrix={z}&tilerow={y}&tilecol={x}`,
+    { maxZoom: 19, attribution: '© <a href="https://www.ign.es" target="_blank" rel="noopener">Instituto Geográfico Nacional</a>' });
+  const base = ign("ign-base", "IGNBaseTodo", "image/png");
+  const orto = ign("pnoa-ma", "OI.OrthoimageCoverage", "image/jpeg");
+  base.addTo(map);
+  L.control.layers({ "Mapa": base, "Ortofoto": orto }).addTo(map);
+  map.on("click", (e) => { setPoint(e.latlng.lat, e.latlng.lng); querySoil(); });
+}
+function setPoint(lat, lon, pan = false) {
+  $("#lat").value = lat.toFixed(5); $("#lon").value = lon.toFixed(5);
+  if (!map) return;
+  if (marker) marker.setLatLng([lat, lon]); else marker = L.marker([lat, lon]).addTo(map);
+  if (pan) map.setView([lat, lon], Math.max(map.getZoom(), 13));
+}
+["#lat", "#lon"].forEach((id) => $(id).addEventListener("change", () => {
+  const la = num("#lat"), lo = num("#lon");
+  if (la != null && lo != null) setPoint(la, lo, true);
+}));
+$("#btnSoil").addEventListener("click", querySoil);
+
+let SOIL = null;
+async function querySoil() {
+  const lat = num("#lat"), lon = num("#lon");
+  const st = $("#soilStatus");
+  if (lat == null || lon == null) { st.className = "status err"; st.textContent = "Indica latitud y longitud."; return; }
+  if (!cfg.keyMain) { st.className = "status err"; st.textContent = "Primero añade tus claves."; return; }
+  st.className = "status"; st.innerHTML = `<span class="spinner"></span> Consultando suelo…`;
+  try {
+    SOIL = await Sativum.soil(lon, lat);
+    if (!SOIL.soilType && SOIL.p == null) throw new Error("No hay datos de suelo en ese punto. Puede estar fuera de la zona cubierta por el ITACyL; introduce tu analítica.");
+    if (SOIL.soilType) $("#soilType").value = SOIL.soilType;
+    const put = (id, v, d) => { if (v != null) $(id).value = Number(v.toFixed(d)); };
+    put("#pConc", SOIL.p, 1); put("#kConc", SOIL.k, 0); put("#som", SOIL.som, 2); put("#ph", SOIL.ph, 1);
+    updateCecHint();
+    st.className = "status ok"; st.textContent = "Datos de suelo cargados.";
+    const extra = [];
+    if (SOIL.texturalClass) extra.push(`Clase textural: ${SOIL.texturalClass}`);
+    if (SOIL.fieldCapacity != null) extra.push(`capacidad de campo ${fmt(SOIL.fieldCapacity)}`);
+    if (SOIL.no3Water != null) extra.push(`nitratos en agua de riego ${fmt(SOIL.no3Water)}`);
+    $("#soilExtra").textContent = extra.length ? extra.join("; ") + "." : "";
+    $("#stepSoil").classList.add("done");
+  } catch (e) {
+    st.className = "status err"; st.textContent = explain(e);
+  }
+}
+function updateCecHint() {
+  const d = defaultsFor($("#strategy").value, $("#soilType").value);
+  $("#cec").placeholder = d.cec;
+}
+$("#soilType").addEventListener("change", updateCecHint);
+$("#strategy").addEventListener("change", updateCecHint);
+
+/* ------------------------------------------------------------------ cálculo del plan */
+function cropFeatures(c, collect, fResOverride) {
+  const fRes = fResOverride != null ? fResOverride : (collect ? (c.fres || 0) : 100);
+  return {
+    plant_species_group: groupOf(c),
+    harvest_product: c.harvestProduct || "none",
+    dry_matter: c.dryMatter || 0, n: c.n || 0, p: c.p || 0, k: c.k || 0,
+    res_product: c.resProduct || "none", res_dry_matter: c.resDryMatter || 0,
+    res_n: c.resN || 0, res_p: c.resP || 0, res_k: c.resK || 0,
+    nfix_code: Number(c.nfixCode || 0), n_min: c.nMin ?? null, n_max: c.nMax ?? null,
+    hi: Math.round(c.hi || 0), f_res: Math.round(fRes),
+    ca: null, s: null, mg: null, res_ca: null, res_mg: null, res_s: null,
+  };
+}
+
+function buildPayload() {
+  const current = cropById($("#cropSel").value);
+  if (!current) throw new Error("Elige el cultivo a abonar.");
+  const strategy = $("#strategy").value, soil = $("#soilType").value;
+  const d = defaultsFor(strategy, soil);
+  let p = num("#pConc"), k = num("#kConc");
+  if (p == null || k == null) {
+    if (strategy !== "MAINTENANCE") throw new Error("Esta estrategia necesita P y K del suelo. Consulta el suelo en el mapa, escribe tu analítica o elige “Mantenimiento”.");
+    p = p ?? d.pThreshold; k = k ?? d.kThreshold;
+  }
+  const rotation = [];
+  for (const row of $$("#rotList .rot-item")) {
+    const c = cropById($(".prevSel", row).value);
+    if (!c) continue;
+    const collect = $(".prevCollect", row).checked;
+    rotation.push({ crop_yield: Math.round(Number($(".prevYield", row).value || 0)), cv: 0,
+      collect_residues: collect, burn_residues: false, crop_features: cropFeatures(c, collect, null) });
+  }
+  const collect = $("#collect").checked;
+  const yieldVal = num("#cropYield") ?? current.yieldMedium ?? 0;
+  rotation.push({ crop_yield: Math.round(yieldVal), cv: 0, collect_residues: collect, burn_residues: false,
+    crop_features: cropFeatures(current, collect, num("#fRes")) });
+
+  const sample = { p_conc: p, k_conc: k, cec: num("#cec") ?? d.cec, som: num("#som") ?? 2 };
+  const ph = num("#ph"); if (ph != null) sample.ph = ph;
+  return {
+    rotation, soil: { soil_type: soil }, sample,
+    p_threshold: { value: d.pThreshold }, k_threshold: { value: d.kThreshold },
+    soil_effect: { coeff: d.soilEffect }, efficiency_factor: { factor: d.efficiency },
+    max_p_rate: { rate: 100 }, max_k_rate: { rate: 275 },
+    n_equation_parameter: { n_end: num("#nEnd") ?? 10, n_other: num("#nOther") ?? 10, n_lost: num("#nLost") ?? 0,
+      f_nr: 0.2, beta_pl: 0.8, efic: num("#efic") ?? 0.8 },
+    strategy: { strategy, tillage: $("#tillage").checked },
+  };
+}
+
+/* Composición de un fertilizante de la respuesta (con respaldo leyendo el nombre "16-5-15"). */
+function composition(f) {
+  let n = f.n, p = f.p2o5 ?? f.p, k = f.k2o ?? f.k;
+  if (n == null && p == null && k == null) {
+    const m = String(f.name || "").match(/(\d+(?:[.,]\d+)?)-(\d+(?:[.,]\d+)?)-(\d+(?:[.,]\d+)?)/);
+    if (m) [n, p, k] = m.slice(1, 4).map((x) => parseFloat(x.replace(",", ".")));
+  }
+  return { n: Number(n) || 0, p: Number(p) || 0, k: Number(k) || 0 };
+}
+
+let LAST = null;
+$("#btnPlan").addEventListener("click", async () => {
+  const out = $("#results"), btn = $("#btnPlan");
+  if (!cfg.keyMain) { out.innerHTML = `<div class="error">Añade tu clave del API Sativum en “Claves y conexión”.</div>`; return; }
+  let payload;
+  try { payload = buildPayload(); } catch (e) { out.innerHTML = `<div class="error">${esc(e.message)}</div>`; return; }
+  btn.disabled = true; btn.innerHTML = `<span class="spinner"></span> Calculando…`;
+  out.innerHTML = `<p class="muted"><span class="spinner"></span> Calculando necesidades con Fertilicalc…</p>`;
+  try {
+    const algo = await Sativum.algo(payload);
+    const needs = (algo && algo.recommendations) || [];
+    if (!needs.length) throw new Error("La API no devolvió recomendaciones.");
+    const last = needs[needs.length - 1];
+    // El servicio de recomendación recibe P y K ELEMENTALES (como los da Fertilicalc)
+    // y los convierte él mismo a P2O5 y K2O. Comprobado: enviando óxidos, las
+    // propuestas salían ×2,29 en P2O5 y ×1,20 en K2O.
+    const elemental = { n: +(last.n || 0).toFixed(2), p: +(last.p || 0).toFixed(2), k: +(last.k || 0).toFixed(2) };
+    // Para mostrar y comparar con las etiquetas de los fertilizantes (N-P2O5-K2O)
+    const toCover = { n: elemental.n, p: elemental.p * P_TO_P2O5, k: elemental.k * K_TO_K2O };
+    let proposals = [], recErr = null, recReq = null;
+    if (elemental.n + elemental.p + elemental.k > 0) {
+      recReq = { adjustedNutrient: $("#adjust").value, npkToCover: elemental, npkTotal: elemental };
+      try { proposals = (await Sativum.recommend(recReq)) || []; } catch (e) { recErr = explain(e); }
+    }
+    LAST = { request: payload, response: algo, recommendationRequest: recReq, proposals };
+    renderResults(payload, needs, toCover, proposals, recErr);
+  } catch (e) {
+    console.error(e);
+    out.innerHTML = `<div class="error">${esc(explain(e))}</div>`;
+  } finally {
+    btn.disabled = false; btn.textContent = "Calcular plan de abonado";
+  }
+});
+
+function renderResults(payload, needs, toCover, proposals, recErr) {
+  const rot = payload.rotation;
+  const names = [...$$("#rotList .rot-item")].map((r) => cropById($(".prevSel", r).value)).filter(Boolean).map((c) => c.name);
+  names.push(cropById($("#cropSel").value).name);
+  const strat = $("#strategy").selectedOptions[0].textContent;
+  const s = payload.sample;
+
+  const rows = needs.map((nd, i) => `
+    <tr class="${i === needs.length - 1 ? "current" : ""}">
+      <td>${esc(names[i] || "Cultivo " + (i + 1))}<span class="el">${fmt(rot[i].crop_yield, 0)} kg/ha · residuo en campo ${rot[i].crop_features.f_res} %</span></td>
+      <td>${fmt(nd.n)}</td>
+      <td>${fmt((nd.p || 0) * P_TO_P2O5)}<span class="el">P ${fmt(nd.p)}</span></td>
+      <td>${fmt((nd.k || 0) * K_TO_K2O)}<span class="el">K ${fmt(nd.k)}</span></td>
+    </tr>`).join("");
+
+  const pLabel = "P₂O₅", kLabel = "K₂O";
+  let props = "";
+  if (recErr) props = `<div class="error">No se pudo obtener la recomendación de fertilizantes: ${esc(recErr)}</div>`;
+  else if (!proposals.length) props = `<p class="muted">No hay propuestas de fertilizantes para estas necesidades.</p>`;
+  else props = proposals.map((pr, i) => {
+    const items = pr.unique || pr.fertilizers || [];
+    const tot = { n: 0, p: 0, k: 0 };
+    const li = items.map((f) => {
+      const q = Number(f.quantity) || 0, c = composition(f);
+      tot.n += q * c.n / 100; tot.p += q * c.p / 100; tot.k += q * c.k / 100;
+      return `<li><span class="q">${fmt(q)} kg/ha</span><span>${esc(f.name)}</span></li>`;
+    }).join("");
+    const bar = (lab, color, have, need) => {
+      if (!need) return `<span>${lab}</span><span class="muted">no necesario</span><span class="v">${fmt(have, 0)}</span>`;
+      const pct = have / need * 100;
+      const cls = pct > 115 ? "over" : pct < 90 ? "under" : "";
+      return `<span>${lab}</span>
+        <span class="bar" title="${fmt(pct, 0)} % de lo necesario"><i style="width:${Math.min(pct, 200) / 2}%;background:${color}"></i><span class="mark"></span></span>
+        <span class="v ${cls}">${fmt(have, 0)} / ${fmt(need, 0)}</span>`;
+    };
+    return `<article class="proposal ${i === 0 ? "best" : ""}">
+      <header><strong>Propuesta ${i + 1}</strong>${pr.code || pr.observations ? `<span class="muted">${esc([pr.code, pr.observations].filter(Boolean).join(": "))}</span>` : ""}</header>
+      <ul>${li}</ul>
+      <div class="bars" aria-label="Aporte frente a necesidades, kg/ha">
+        ${bar("N", "var(--n)", tot.n, toCover.n)}
+        ${bar(pLabel, "var(--p)", tot.p, toCover.p)}
+        ${bar(kLabel, "var(--k)", tot.k, toCover.k)}
+      </div>
+    </article>`;
+  }).join("");
+
+  $("#results").innerHTML = `
+    <h3>Necesidades por cultivo</h3>
+    <p class="summary">${esc(strat)} · suelo ${esc(SOIL_LABEL[payload.soil.soil_type])} · P Olsen ${fmt(s.p_conc)} · K ${fmt(s.k_conc, 0)} mg/kg · MO ${fmt(s.som)} %</p>
+    <div class="tbl-wrap"><table class="needs">
+      <thead><tr><th>Cultivo</th><th>N</th><th>P₂O₅</th><th>K₂O</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>
+    <p class="muted">kg/ha. Fertilicalc da P y K elementales; se muestran también como óxidos.</p>
+
+    <h3>A cubrir con fertilizantes</h3>
+    <div class="tocover">
+      <div class="cn"><b>${fmt(toCover.n, 0)}</b><span>kg N/ha</span></div>
+      <div class="cp"><b>${fmt(toCover.p, 0)}</b><span>kg ${pLabel}/ha</span></div>
+      <div class="ck"><b>${fmt(toCover.k, 0)}</b><span>kg ${kLabel}/ha</span></div>
+    </div>
+
+    <h3>Propuestas de fertilizantes</h3>
+    <p class="muted" style="margin-top:0">La raya vertical marca el 100 % de lo necesario. Las propuestas cubren exactamente el nutriente elegido en “Ajustar a”.</p>
+    ${props}
+    <p class="note">Comprueba los límites legales de nitrógeno. En zonas vulnerables a nitratos, máximo 170 kg/ha y año de N de origen orgánico (RD 47/2022).</p>
+    <details>
+      <summary>Datos enviados y recibidos</summary>
+      <div class="row" style="margin:.6rem 0"><button type="button" class="btn" id="btnDownload">Descargar JSON</button></div>
+      <pre class="json">${esc(JSON.stringify(LAST, null, 2))}</pre>
+    </details>`;
+  $("#btnDownload").addEventListener("click", () => {
+    const blob = new Blob([JSON.stringify(LAST, null, 2)], { type: "application/json" });
+    const a = Object.assign(document.createElement("a"), { href: URL.createObjectURL(blob), download: "plan_abonado.json" });
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  });
+  $("#stepStrat").classList.add("done");
+  if (matchMedia("(max-width: 960px)").matches) $("#results").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+/* ------------------------------------------------------------------ fertilizantes */
+$("#btnFerts").addEventListener("click", async () => {
+  const out = $("#fertsOut");
+  if (!cfg.keyMain) { out.innerHTML = `<div class="error">Añade tu clave en “Claves y conexión”.</div>`; return; }
+  const params = [["name", $("#fName").value.trim()], ["producer", $("#fProd").value.trim()]];
+  $$(".ftype:checked").forEach((c) => params.push(["type[]", c.value]));
+  if ($("#fOrg").checked) params.push(["organics", "true"]);
+  if ($("#fMin").checked) params.push(["minerals", "true"]);
+  out.innerHTML = `<p class="muted"><span class="spinner"></span> Buscando…</p>`;
+  try {
+    const list = (await Sativum.fertilizers(params)) || [];
+    if (!list.length) { out.innerHTML = `<p class="muted">Ningún fertilizante coincide con la búsqueda. Prueba con menos filtros.</p>`; return; }
+    out.innerHTML = `<p class="muted">${list.length} fertilizantes</p><div class="tbl-wrap"><table class="list">
+      <thead><tr><th>Nombre</th><th>Fabricante</th><th class="r">N %</th><th class="r">P₂O₅ %</th><th class="r">K₂O %</th></tr></thead>
+      <tbody>${list.map((f) => `<tr><td>${esc(f.name)}</td><td>${esc(f.producer)}</td>
+        <td class="r">${fmt(f.n)}</td><td class="r">${fmt(f.p2o5)}</td><td class="r">${fmt(f.k2o)}</td></tr>`).join("")}</tbody>
+    </table></div>`;
+  } catch (e) { out.innerHTML = `<div class="error">${esc(explain(e))}</div>`; }
+});
+
+/* ------------------------------------------------------------------ plagas */
+$("#btnPests").addEventListener("click", async () => {
+  const out = $("#pestsOut");
+  if (!cfg.keyMain) { out.innerHTML = `<div class="error">Añade tu clave en “Claves y conexión”.</div>`; return; }
+  const mode = $("input[name=pmode]:checked").value;
+  let params;
+  if (mode === "crop") {
+    const c = cropById($("#cropSel").value);
+    if (!c || !c.productSiexId) { out.innerHTML = `<div class="error">Elige antes un cultivo en el plan de abonado, o consulta por grupo.</div>`; return; }
+    params = [["crop", c.productSiexId]];
+  } else params = [["group", $("#pGroup").value]];
+  out.innerHTML = `<p class="muted"><span class="spinner"></span> Consultando…</p>`;
+  try {
+    let data = await Sativum.pests(params);
+    data = (Array.isArray(data) ? data : [data]).filter(Boolean).map((p) => p.items || p);
+    if (!data.length) { out.innerHTML = `<p class="muted">No hay plagas registradas para esta consulta.</p>`; return; }
+    const months = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+    out.innerHTML = `<p class="muted">Cada casilla es una semana del año; cuanto más oscura, mayor nivel de alerta.</p>` + data.map((p) => {
+      const cal = {};
+      for (const pc of p.productCalendar || []) for (const w of pc.calendar || []) cal[w.week] = Math.max(cal[w.week] || 0, w.alertLevel || 0);
+      const cells = Array.from({ length: 52 }, (_, i) => {
+        const lv = cal[i + 1] || 0;
+        return `<i title="Semana ${i + 1}: alerta ${lv}" style="${lv ? `background:color-mix(in srgb, var(--soil) ${Math.min(lv, 100)}%, var(--surface-2))` : ""}"></i>`;
+      }).join("");
+      return `<div class="pest"><h4>${esc(p.name)}</h4>
+        <div class="muted">${esc([p.type, p.causalAgent].filter(Boolean).join(": "))}</div>
+        <div class="weeks">${cells}</div><div class="weeks-axis">${months.map((m) => `<span>${m}</span>`).join("")}</div>
+        ${p.link ? `<a href="${esc(p.link)}" target="_blank" rel="noopener">Ficha de la plaga</a>` : ""}</div>`;
+    }).join("");
+  } catch (e) { out.innerHTML = `<div class="error">${esc(explain(e))}</div>`; }
+});
+
+/* ------------------------------------------------------------------ arranque */
+(function init() {
+  loadConfig();
+  renderKeySummary();
+  initMap();
+  updateCecHint();
+  if (cfg.keyMain) loadCrops().catch(() => {});
+  else showTab("config");
+})();
+</script>
+</body>
+</html>
