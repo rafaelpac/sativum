@@ -575,7 +575,7 @@ function addPrevRow() {
 let map = null, marker = null;
 function initMap() {
   if (typeof L === "undefined") { $("#map").outerHTML = `<p class="muted">No se pudo cargar el mapa; escribe las coordenadas a mano.</p>`; return; }
-  map = L.map("map").setView([41.65, -4.72], 7);
+  map = L.map("map").setView([43.01, -7.556], 7);
   const ign = (svc, layer, fmt) => L.tileLayer(
     `https://www.ign.es/wmts/${svc}?service=WMTS&request=GetTile&version=1.0.0&format=${fmt}` +
     `&layer=${layer}&tilematrixset=GoogleMapsCompatible&style=default&tilematrix={z}&tilerow={y}&tilecol={x}`,
